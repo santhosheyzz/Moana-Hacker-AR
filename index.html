@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Shadow Hunt AR — Find 13</title>
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
+    <style>
+      body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
+      /* small on-screen hint panel for accessibility */
+      #hud {
+        position: absolute;
+        left: 12px;
+        top: 12px;
+        background: rgba(0,0,0,0.45);
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 8px;
+        z-index: 10;
+        max-width: calc(100% - 40px);
+        font-size: 14px;
+      }
+      #hud b { color: #ffd700; }
+    </style>
+  </head>
+
+  <body>
+    <div id="hud">
+      <div><b>Objective:</b> Find the hidden number <b>13</b>.</div>
+      <div>Scan the markers. Tap objects to reveal digits. When both digits are found, the final <b>13</b> unlocks.</div>
+    </div>
+
+    <!-- AR Scene -->
+    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
+      <!-- Camera (required) -->
+      <a-entity camera></a-entity>
+
+      <!-- --- MARKER 1: Hiro (reveals '1') --- -->
+      <a-marker id="marker-hiro" preset="hiro">
+        <!-- clickable red box (tap to reveal) -->
+        <a-box id="box-1" class="clickable"
+               position="0 0.5 0" depth="0.4" height="0.4" width="0.4"
+               material="color: #c0392b; opacity: 0.95">
+        </a-box>
+
+        <!-- hidden digit text for '1' (starts invisible) -->
+        <a-text id="digit-1" value="1"
+                position="0 1.2 0"
+                align="center"
+                scale="2 2 2"
+                color="#ffffff"
+                visible="false"
+                material="shader:msdf">
+        </a-text>
+
+        <!-- small clue -->
+        <a-text value="Clue: I am the start, a single one." 
+                position="0 -0.3 0"
+                align="center"
+                scale="0.6 0.6 0.6"
+                color="#ffeaa7">
+        </a-text>
+      </a-marker>
+
+      <!-- --- MARKER 2: Kanji (reveals '3') --- -->
+      <a-marker id="marker-kanji" preset="kanji">
+        <!-- clickable blue sphere -->
+        <a-sphere id="sphere-3" class="clickable"
+                  position="0 0.5 0" radius="0.3"
+                  material="color: #2980b9; opacity: 0.95">
+        </a-sphere>
+
+        <!-- hidden digit text for '3' -->
+        <a-text id="digit-3" value="3"
+                position="0 1.2 0"
+                align="center"
+                scale="2 2 2"
+                color="#ffffff"
+                visible="false">
+        </a-text>
+
+        <!-- clue -->
+        <a-text value="Clue: Twice the prime after 2." 
+                position="0 -0.3 0"
+                align="center"
+                scale="0.6 0.6 0.6"
+                color="#dff9fb">
+        </a-text>
+      </a-marker>
+
+      <!-- --- MARKER 3: Custom (optional) - shows final effect if you want it to be anchored to marker) --- -->
+      <a-marker id="marker-final" type="pattern" url="custom-marker.patt">
+        <!-- placeholder for final big 13; initially invisible -->
+        <a-entity id="final-13" visible="false" position="0 0.8 0">
+          <!-- big glowing number -->
+          <a-text id="big-13" value="13"
+                  align="center"
+                  scale="5 5 5"
+                  color="#ffdd57"
+                  shader="msdf">
+          </a-text>
+
+          <!-- soft rotating halo -->
+          <a-ring radius-inner="0.9" radius-outer="1.4" rotation="-90 0 0" position="0 0.05 0"
+                  material="shader:flat; opacity:0.55"></a-ring>
+        </a-entity>
+
+        <a-text value="Final: Place both digits here or wait for auto-unlock." 
+                position="0 -0.5 0" align="center" scale="0.5 0.5 0.5" color="#ffdfe6"></a-text>
+      </a-marker>
+
+      <!-- A non-marker fallback big 13 in the scene center (for devices that cannot use custom marker) -->
+      <a-entity id="floating-13" position="0 1.5 -2" visible="false">
+        <a-text value="13" align="center" scale="6 6 6" color="#ff6b6b"></a-text>
+      </a-entity>
+    </a-scene>
+
+    <script>
+      // Track reveals
+      const state = { found1: false, found3: false };
+
+      // utility to animate reveal (makes text visible and pop)
+      function revealDigit(el) {
+        if (!el) return;
+        el.setAttribute('visible', 'true');
+        // grow animation
+        el.setAttribute('animation__scale', {
+          property: 'scale',
+          to: '2.8 2.8 2.8',
+          dur: 350,
+          easing: 'easeOutElastic'
+        });
+        // slight float
+        el.setAttribute('animation__pos', {
+          property: 'position',
+          to: '0 1.4 0',
+          dur: 900,
+          dir: 'alternate',
+          loop: true,
+          easing: 'easeInOutSine'
+        });
+      }
+
+      // when both digits are found -> show final 13
+      function tryUnlockFinal() {
+        if (state.found1 && state.found3) {
+          // If final marker is present and visible, show final there
+          const final = document.querySelector('#final-13');
+          const floating = document.querySelector('#floating-13');
+          if (final) {
+            final.setAttribute('visible', 'true');
+            // final glow pulse
+            final.querySelector('#big-13').setAttribute('animation__pulse', {
+              property: 'scale',
+              to: '5.6 5.6 5.6',
+              dur: 600,
+              dir: 'alternate',
+              loop: true,
+              easing: 'easeInOutSine'
+            });
+          }
+          if (floating) {
+            floating.setAttribute('visible', 'true');
+            floating.setAttribute('animation__float', {
+              property: 'position',
+              to: '0 1.6 -2',
+              dur: 1200,
+              dir: 'alternate',
+              loop: true,
+              easing: 'easeInOutSine'
+            });
+          }
+
+          // update HUD (optional)
+          const hud = document.querySelector('#hud');
+          hud.innerHTML = '<div><b>Unlocked:</b> You found <b>1</b> and <b>3</b> — final number <b>13</b> revealed!</div>' +
+                          '<div>Nice! Show this to the judge or paste <b>FLAG{13_FOUND}</b>.</div>';
+        }
+      }
+
+      // add click handlers for the objects
+      window.addEventListener('DOMContentLoaded', () => {
+        // target elements
+        const box1 = document.querySelector('#box-1');
+        const digit1 = document.querySelector('#digit-1');
+        const sphere3 = document.querySelector('#sphere-3');
+        const digit3 = document.querySelector('#digit-3');
+
+        // marker found/lost feedback (optional)
+        const markerHiro = document.querySelector('#marker-hiro');
+        const markerKanji = document.querySelector('#marker-kanji');
+
+        markerHiro.addEventListener('markerFound', () => {
+          // small HUD hint
+          const hud = document.querySelector('#hud');
+          hud.innerHTML = '<div><b>Hiro detected.</b> Tap the red box to reveal its digit.</div>';
+        });
+        markerHiro.addEventListener('markerLost', () => {
+          const hud = document.querySelector('#hud');
+          hud.innerHTML = '<div>Scan the markers. Tap objects to reveal digits. When both digits are found, the final <b>13</b> unlocks.</div>';
+        });
+
+        markerKanji.addEventListener('markerFound', () => {
+          const hud = document.querySelector('#hud');
+          hud.innerHTML = '<div><b>Kanji detected.</b> Tap the blue sphere to reveal its digit.</div>';
+        });
+
+        // make box clickable
+        if (box1) {
+          box1.addEventListener('click', (evt) => {
+            if (!state.found1) {
+              state.found1 = true;
+              revealDigit(digit1);
+              // small feedback: change box color to indicate 'solved'
+              box1.setAttribute('material', 'color: #2ecc71');
+              tryUnlockFinal();
+            }
+          });
+        }
+
+        if (sphere3) {
+          sphere3.addEventListener('click', (evt) => {
+            if (!state.found3) {
+              state.found3 = true;
+              revealDigit(digit3);
+              sphere3.setAttribute('material', 'color: #2ecc71');
+              tryUnlockFinal();
+            }
+          });
+        }
+
+        // Accessibility note: if user can't scan custom marker, auto-unlock final after small timeout
+        // (optional - comment out if you don't want auto fallback)
+        setTimeout(() => {
+          // if both digits were found but final marker not scanned, ensure floating 13 shows
+          if (state.found1 && state.found3) tryUnlockFinal();
+        }, 1500);
+      });
+    </script>
+  </body>
+</html>
