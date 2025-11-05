@@ -2,9 +2,9 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Project SYN-01 | Moana AR Puzzle</title>
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
+    <title>Project SYN-01 | Dual AR Puzzle</title>
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.7/aframe/build/aframe-ar.js"></script>
     <style>
       body {
         margin: 0;
@@ -48,7 +48,6 @@
         padding: 10px 15px;
         border-radius: 10px;
         z-index: 20;
-        max-width: 90%;
       }
 
       #inputBox {
@@ -111,22 +110,18 @@
   </head>
 
   <body>
-    <!-- Permission Screen -->
     <div id="permissionScreen">
-      <h2>🔐 Camera Access Required</h2>
-      <p>Tap below and grant permission to start Project SYN-01 AR experience.</p>
-      <button id="startBtn">Allow Camera & Start</button>
+      <h2>🧠 Project SYN-01 Access Portal</h2>
+      <p>Tap below and allow camera access to enter the AR Simulation of Moana Marker.</p>
+      <button id="startBtn">Let's Go Inside to AR World </button>
     </div>
 
-    <!-- HUD -->
     <div id="hud">
-      <b>Project SYN-01 (☉_☉)</b><br />
-      Scan the Moana marker to hear her clue and enter the secret code.
+      <b>Project SYN-01 (☉_☉)</b><br />Scan the <b>Kanji marker</b> to start Level 1.
     </div>
 
-    <!-- Input Box -->
     <div id="inputBox">
-      <div><b>Question:</b> What code that will be?</div>
+      <div id="questionText"><b>Question:</b> Solve the clue.</div>
       <br />
       <input id="answerInput" placeholder="Enter code..." maxlength="5" />
       <button id="submitBtn">Submit</button>
@@ -135,38 +130,25 @@
     <div id="message"></div>
     <canvas id="matrixCanvas"></canvas>
 
-    <!-- AR Scene -->
     <a-scene
       id="scene"
       embedded
-      vr-mode-ui="enabled: false"
       arjs="sourceType: webcam; debugUIEnabled: false;"
       style="display: none;"
     >
       <a-entity camera></a-entity>
 
-      <a-marker id="moanaMarker" preset="hiro">
-        <a-gltf-model
-          id="moanaModel"
-          src="moana.glb"
-          position="0 0 0"
-          scale="0.4 0.4 0.4"
-          rotation="0 180 0"
-          animation="property: rotation; to: 0 360 0; loop: true; dur: 12000; easing: linear;"
-        ></a-gltf-model>
+      <!-- LEVEL 1 - KANJI Marker -->
+      <a-marker id="kanjiMarker" preset="kanji">
+        <a-sphere position="0 0.5 0" radius="0.3" color="#ff00ff" animation="property: scale; to: 1.3 1.3 1.3; loop: true; dur: 1800; dir: alternate;"></a-sphere>
+        <a-text value="Level 1: Find the hidden number !!!." position="-1 1 0" scale="1.5 1.5 1.5" color="yellow"></a-text>
+      </a-marker>
 
-        <a-entity
-          id="moanaVoice"
-          sound="src: url(clue.mp3); autoplay: false;"
-        ></a-entity>
-
-        <a-text
-          value="I heard the ocean hum a code..."
-          position="0 1.6 0"
-          align="center"
-          color="#00ffff"
-          scale="1.5 1.5 1.5"
-        ></a-text>
+      <!-- LEVEL 2 - HIRO Marker -->
+      <a-marker id="hiroMarker" preset="hiro">
+        <a-gltf-model id="moanaModel" src="Moana2.glb" position="0 0 0" scale="0.4 0.4 0.4" rotation="0 180 0" animation="property: rotation; to: 0 360 0; loop: true; dur: 12000;"></a-gltf-model>
+        <a-entity id="moanaVoice" sound="src: url(clue.mp3); autoplay: false;"></a-entity>
+        <a-text value="Level 2: I heard the ocean hum a code...Carefully Listen Me" position="0 5 0" align="center" color="#00ffff" scale="1.5 1.5 1.5"></a-text>
       </a-marker>
     </a-scene>
 
@@ -174,56 +156,74 @@
       const permissionScreen = document.getElementById("permissionScreen");
       const startBtn = document.getElementById("startBtn");
       const scene = document.getElementById("scene");
+      const message = document.getElementById("message");
       const inputBox = document.getElementById("inputBox");
+      const questionText = document.getElementById("questionText");
       const answerInput = document.getElementById("answerInput");
       const submitBtn = document.getElementById("submitBtn");
-      const message = document.getElementById("message");
-      const marker = document.getElementById("moanaMarker");
-      const voice = document.getElementById("moanaVoice");
+      const kanjiMarker = document.getElementById("kanjiMarker");
+      const hiroMarker = document.getElementById("hiroMarker");
+      const moanaVoice = document.getElementById("moanaVoice");
       const matrixCanvas = document.getElementById("matrixCanvas");
-      const correctCode = "3";
 
-      // ✅ Ask for camera permission first
+      let level = 1;
+      let correctCode = "1";
+
+      // Camera permission
       startBtn.addEventListener("click", async () => {
         try {
           await navigator.mediaDevices.getUserMedia({ video: true });
           permissionScreen.style.display = "none";
           scene.style.display = "block";
         } catch (err) {
-          alert("Camera permission is required for AR to function.");
+          alert("Camera permission required for AR!");
         }
       });
 
-      // Show input and play voice when marker found
-      marker.addEventListener("markerFound", () => {
-        voice.components.sound.playSound();
-        inputBox.style.display = "block";
+      // LEVEL 1 - Kanji
+      kanjiMarker.addEventListener("markerFound", () => {
+        if (level === 1) {
+          questionText.innerHTML = "<b>Question:</b> What number glows within the Moana Necklace !!";
+          inputBox.style.display = "block";
+        }
       });
 
-      marker.addEventListener("markerLost", () => {
-        inputBox.style.display = "none";
+      // LEVEL 2 - Hiro
+      hiroMarker.addEventListener("markerFound", () => {
+        if (level === 2) {
+          moanaVoice.components.sound.playSound();
+          questionText.innerHTML = "<b>Question:</b> What code did the ocean humm?";
+          inputBox.style.display = "block";
+        }
       });
 
-      // Check answer
       submitBtn.addEventListener("click", () => {
         const ans = answerInput.value.trim();
-        if (!ans) return;
-
         if (ans === correctCode) {
-          celebrateMatrix();
+          if (level === 1) {
+            message.textContent = "✅ Correct! You found Level 1 key.";
+            message.style.display = "block";
+            setTimeout(() => {
+              message.style.display = "none";
+              level = 2;
+              correctCode = "3";
+              inputBox.style.display = "none";
+              alert("🌀 Level 1 cleared! Now scan the Hiro marker to continue.");
+            }, 2000);
+          } else if (level === 2) {
+            celebrateMatrix();
+          }
         } else {
-          message.textContent = "❌ Wrong Code! Try again.";
-          message.style.color = "#ff5555";
+          message.textContent = "❌ Wrong code. Try again!";
           message.style.display = "block";
-          setTimeout(() => (message.style.display = "none"), 1500);
+          setTimeout(() => (message.style.display = "none"), 2000);
         }
       });
 
-      // 🎉 Matrix Rain Celebration
+      // Celebration
       function celebrateMatrix() {
-        message.textContent = "✅ Access Granted. System Rebooting...";
+        message.textContent = "🎉 Access granted! AR mission complete. Next Proceed to VR Terminal.";
         message.style.display = "block";
-        message.style.color = "#00ff9d";
         inputBox.style.display = "none";
 
         matrixCanvas.style.display = "block";
@@ -233,15 +233,14 @@
 
         const letters = "01🧬💾☉_☉⚡";
         const fontSize = 16;
-        const columns = matrixCanvas.width / fontSize;
-        const drops = Array(Math.floor(columns)).fill(1);
+        const columns = Math.floor(matrixCanvas.width / fontSize);
+        const drops = Array(columns).fill(1);
 
         function draw() {
           ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
           ctx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
           ctx.fillStyle = "#00ff66";
           ctx.font = fontSize + "px monospace";
-
           for (let i = 0; i < drops.length; i++) {
             const text = letters.charAt(Math.floor(Math.random() * letters.length));
             ctx.fillText(text, i * fontSize, drops[i] * fontSize);
@@ -251,12 +250,12 @@
           }
         }
 
-        let interval = setInterval(draw, 50);
-
+        const interval = setInterval(draw, 50);
         setTimeout(() => {
           clearInterval(interval);
           matrixCanvas.style.display = "none";
           message.style.display = "none";
+          alert("🚀 AR complete! Next, access the VR terminal to continue the mission.");
         }, 5000);
       }
     </script>
