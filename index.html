@@ -1,24 +1,41 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <meta charset="utf-8">
+    <meta charset="utf-8" />
     <title>Moana AR Puzzle – Project SYN-01</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
     <style>
       body { margin: 0; overflow: hidden; font-family: 'Poppins', sans-serif; background: black; }
-      #startButton {
-        position: absolute; top: 45%; left: 50%; transform: translate(-50%,-50%);
-        background: linear-gradient(45deg,#00ff88,#00b894);
-        color: black; font-weight: 600; font-size: 18px;
-        border: none; border-radius: 10px; padding: 15px 25px;
-        cursor: pointer; z-index: 50;
+
+      #permissionOverlay {
+        position: fixed;
+        inset: 0;
+        background: radial-gradient(circle, #001a00 0%, #000 100%);
+        color: #00ff99;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        z-index: 1000;
+        text-align: center;
       }
+      #permissionOverlay button {
+        margin-top: 20px;
+        padding: 12px 24px;
+        font-size: 18px;
+        border: none;
+        border-radius: 10px;
+        background: #00ff99;
+        color: black;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
       #hud {
         position: absolute; top: 10px; left: 10px;
         background: rgba(0,0,0,0.55); color: white;
-        padding: 10px 15px; border-radius: 10px;
-        z-index: 20;
+        padding: 10px 15px; border-radius: 10px; z-index: 20;
       }
       #inputBox {
         position: absolute; bottom: 8%; left: 50%;
@@ -51,9 +68,12 @@
       }
     </style>
   </head>
-
   <body>
-    <button id="startButton">Start AR Experience</button>
+    <div id="permissionOverlay">
+      <h2>🔒 Camera Permission Needed</h2>
+      <p>Tap below to allow your camera and start the AR experience.</p>
+      <button id="grantBtn">Grant Camera Access</button>
+    </div>
 
     <div id="hud">
       <b>Project SYN-01</b><br>
@@ -69,13 +89,14 @@
     <div id="message"></div>
     <canvas id="matrixCanvas"></canvas>
 
-    <!-- A-Frame Scene -->
-    <a-scene id="scene"
-             embedded
-             vr-mode-ui="enabled: false"
-             renderer="logarithmicDepthBuffer: true; antialias: true;"
-             arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
-             style="display:none;">
+    <a-scene
+      id="scene"
+      vr-mode-ui="enabled: false"
+      embedded
+      renderer="logarithmicDepthBuffer: true; antialias: true;"
+      arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
+      style="display:none;"
+    >
       <a-assets crossorigin="anonymous">
         <a-asset-item id="moanaAsset" src="moana3d.glb"></a-asset-item>
         <audio id="clueAudio" src="clue.mp3"></audio>
@@ -84,27 +105,31 @@
       <a-entity camera></a-entity>
 
       <a-marker id="moanaMarker" type="pattern" url="Kanji_marker_ARjs.png">
-        <a-gltf-model id="moanaModel"
-                      src="#moanaAsset"
-                      position="0 0 0"
-                      scale="0.5 0.5 0.5"
-                      rotation="0 180 0"
-                      crossorigin="anonymous"
-                      animation="property: rotation; to: 0 360 0; loop: true; dur: 12000; easing: linear;">
-        </a-gltf-model>
+        <a-gltf-model
+          id="moanaModel"
+          src="#moanaAsset"
+          position="0 0 0"
+          scale="0.5 0.5 0.5"
+          rotation="0 180 0"
+          animation="property: rotation; to: 0 360 0; loop: true; dur: 12000; easing: linear;"
+          crossorigin="anonymous"
+        ></a-gltf-model>
 
         <a-entity id="moanaVoice" sound="src: #clueAudio; autoplay: false;"></a-entity>
 
-        <a-text value="I heard the ocean hum a code..."
-                position="0 1.6 0"
-                align="center"
-                color="#00ffff"
-                scale="1.5 1.5 1.5"></a-text>
+        <a-text
+          value="I heard the ocean hum a code..."
+          position="0 1.6 0"
+          align="center"
+          color="#00ffff"
+          scale="1.5 1.5 1.5"
+        ></a-text>
       </a-marker>
     </a-scene>
 
     <script>
-      const startButton = document.getElementById('startButton');
+      const overlay = document.getElementById('permissionOverlay');
+      const grantBtn = document.getElementById('grantBtn');
       const scene = document.getElementById('scene');
       const marker = document.getElementById('moanaMarker');
       const voice = document.getElementById('moanaVoice');
@@ -115,9 +140,16 @@
       const matrixCanvas = document.getElementById('matrixCanvas');
       const correctCode = '3';
 
-      startButton.addEventListener('click', () => {
-        startButton.style.display = 'none';
-        scene.style.display = 'block';
+      // Explicit camera permission
+      grantBtn.addEventListener('click', async () => {
+        try {
+          await navigator.mediaDevices.getUserMedia({ video: true });
+          overlay.style.display = 'none';
+          scene.style.display = 'block';
+        } catch (err) {
+          alert('Camera access denied. Enable camera in browser settings.');
+          console.error(err);
+        }
       });
 
       marker.addEventListener('markerFound', () => {
@@ -125,6 +157,7 @@
         try { voice.components.sound.playSound(); } catch(e){ console.warn(e); }
         inputBox.style.display = 'block';
       });
+
       marker.addEventListener('markerLost', () => {
         inputBox.style.display = 'none';
       });
@@ -146,7 +179,6 @@
         message.style.background = 'rgba(0,200,100,0.85)';
         message.style.display = 'block';
         inputBox.style.display = 'none';
-
         matrixCanvas.style.display = 'block';
         matrixCanvas.width = window.innerWidth;
         matrixCanvas.height = window.innerHeight;
