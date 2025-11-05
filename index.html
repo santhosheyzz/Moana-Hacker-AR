@@ -1,17 +1,24 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="utf-8" />
+    <meta charset="utf-8">
     <title>Moana AR Puzzle – Project SYN-01</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
     <style>
-      body { margin: 0; overflow: hidden; font-family: 'Poppins', sans-serif; }
+      body { margin: 0; overflow: hidden; font-family: 'Poppins', sans-serif; background: black; }
+      #startButton {
+        position: absolute; top: 45%; left: 50%; transform: translate(-50%,-50%);
+        background: linear-gradient(45deg,#00ff88,#00b894);
+        color: black; font-weight: 600; font-size: 18px;
+        border: none; border-radius: 10px; padding: 15px 25px;
+        cursor: pointer; z-index: 50;
+      }
       #hud {
         position: absolute; top: 10px; left: 10px;
         background: rgba(0,0,0,0.55); color: white;
         padding: 10px 15px; border-radius: 10px;
-        z-index: 20; max-width: 90%;
+        z-index: 20;
       }
       #inputBox {
         position: absolute; bottom: 8%; left: 50%;
@@ -44,14 +51,17 @@
       }
     </style>
   </head>
+
   <body>
+    <button id="startButton">Start AR Experience</button>
+
     <div id="hud">
       <b>Project SYN-01</b><br>
       Scan the Moana marker to hear her clue and enter the secret code.
     </div>
 
     <div id="inputBox">
-      <div><b>Question:</b> What code will be?</div><br>
+      <div><b>Question:</b> What code will it be?</div><br>
       <input id="answerInput" placeholder="Enter code..." maxlength="5" />
       <button id="submitBtn">Submit</button>
     </div>
@@ -59,10 +69,14 @@
     <div id="message"></div>
     <canvas id="matrixCanvas"></canvas>
 
-    <!-- A-Frame scene -->
-    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
+    <!-- A-Frame Scene -->
+    <a-scene id="scene"
+             embedded
+             vr-mode-ui="enabled: false"
+             renderer="logarithmicDepthBuffer: true; antialias: true;"
+             arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
+             style="display:none;">
       <a-assets crossorigin="anonymous">
-        <!-- Make sure the filename exactly matches the uploaded one on Netlify / repo -->
         <a-asset-item id="moanaAsset" src="moana3d.glb"></a-asset-item>
         <audio id="clueAudio" src="clue.mp3"></audio>
       </a-assets>
@@ -70,20 +84,17 @@
       <a-entity camera></a-entity>
 
       <a-marker id="moanaMarker" type="pattern" url="Kanji_marker_ARjs.png">
-        <!-- Use the preloaded asset via src="#moanaAsset" -->
         <a-gltf-model id="moanaModel"
                       src="#moanaAsset"
                       position="0 0 0"
-                      scale="0.35 0.35 0.35"
+                      scale="0.5 0.5 0.5"
                       rotation="0 180 0"
-                      animation="property: rotation; to: 0 360 0; loop: true; dur: 12000; easing: linear;"
-                      crossorigin="anonymous">
+                      crossorigin="anonymous"
+                      animation="property: rotation; to: 0 360 0; loop: true; dur: 12000; easing: linear;">
         </a-gltf-model>
 
-        <!-- Audio Clue attached as sound component -->
         <a-entity id="moanaVoice" sound="src: #clueAudio; autoplay: false;"></a-entity>
 
-        <!-- Floating Text -->
         <a-text value="I heard the ocean hum a code..."
                 position="0 1.6 0"
                 align="center"
@@ -93,54 +104,36 @@
     </a-scene>
 
     <script>
-      // Element refs
-      const marker = document.querySelector('#moanaMarker');
-      const voiceEntity = document.querySelector('#moanaVoice');
-      const inputBox = document.querySelector('#inputBox');
-      const answerInput = document.querySelector('#answerInput');
-      const submitBtn = document.querySelector('#submitBtn');
-      const message = document.querySelector('#message');
-      const matrixCanvas = document.querySelector('#matrixCanvas');
-      const moanaModel = document.querySelector('#moanaModel');
+      const startButton = document.getElementById('startButton');
+      const scene = document.getElementById('scene');
+      const marker = document.getElementById('moanaMarker');
+      const voice = document.getElementById('moanaVoice');
+      const inputBox = document.getElementById('inputBox');
+      const answerInput = document.getElementById('answerInput');
+      const submitBtn = document.getElementById('submitBtn');
+      const message = document.getElementById('message');
+      const matrixCanvas = document.getElementById('matrixCanvas');
       const correctCode = '3';
 
-      // Debugging logs
-      console.log('Script loaded: AR page initialised.');
-
-      // Marker events
-      marker.addEventListener('markerFound', () => {
-        console.log('markerFound event');
-        try { voiceEntity.components.sound.playSound(); } catch (e) { console.warn('Could not play sound', e); }
-        inputBox.style.display = 'block';
-        // try to ensure model visible
-        moanaModel.setAttribute('visible', 'true');
+      startButton.addEventListener('click', () => {
+        startButton.style.display = 'none';
+        scene.style.display = 'block';
       });
 
+      marker.addEventListener('markerFound', () => {
+        console.log('Marker detected!');
+        try { voice.components.sound.playSound(); } catch(e){ console.warn(e); }
+        inputBox.style.display = 'block';
+      });
       marker.addEventListener('markerLost', () => {
-        console.log('markerLost event');
         inputBox.style.display = 'none';
       });
 
-      // Model load error / success handlers
-      moanaModel.addEventListener('model-loaded', () => {
-        console.log('GLB model loaded successfully.');
-        // If model appears tiny or far, adjust scale or position here.
-      });
-      moanaModel.addEventListener('model-error', (ev) => {
-        console.error('Model failed to load:', ev);
-        message.textContent = 'Model load failed — check console (404 / CORS).';
-        message.style.background = 'rgba(255,70,70,0.9)';
-        message.style.display = 'block';
-        setTimeout(()=> message.style.display='none', 3000);
-      });
-
-      // Submit handler
       submitBtn.addEventListener('click', () => {
         const ans = answerInput.value.trim();
         if(!ans) return;
-        if(ans === correctCode) {
-          hackerCelebrate();
-        } else {
+        if(ans === correctCode) hackerCelebrate();
+        else {
           message.textContent = '❌ Wrong Code! Try again.';
           message.style.background = 'rgba(255,0,0,0.8)';
           message.style.display = 'block';
@@ -148,7 +141,6 @@
         }
       });
 
-      // Hacker / numbers rain celebration (Matrix-like)
       function hackerCelebrate(){
         message.textContent = '✅ Access Granted! Decrypting...';
         message.style.background = 'rgba(0,200,100,0.85)';
@@ -159,50 +151,33 @@
         matrixCanvas.width = window.innerWidth;
         matrixCanvas.height = window.innerHeight;
         const ctx = matrixCanvas.getContext('2d');
-
-        // Characters: digits + hex chars for hacker vibe
-        const chars = '0123456789ABCDEF';
+        const chars = '01';
         const fontSize = 16;
         const columns = Math.floor(matrixCanvas.width / fontSize);
         const drops = [];
-        for(let x=0;x<columns;x++) drops[x] = Math.random()*matrixCanvas.height/2;
-
-        ctx.font = fontSize + 'px monospace';
-
+        for(let x=0;x<columns;x++) drops[x]=Math.random()*matrixCanvas.height/2;
+        ctx.font = fontSize+'px monospace';
         let running = true;
-        function draw() {
+        function draw(){
           if(!running) return;
-          ctx.fillStyle = 'rgba(0,0,0,0.05)';
-          ctx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
-
+          ctx.fillStyle='rgba(0,0,0,0.05)';
+          ctx.fillRect(0,0,matrixCanvas.width,matrixCanvas.height);
           for(let i=0;i<drops.length;i++){
             const text = chars.charAt(Math.floor(Math.random()*chars.length));
-            const x = i * fontSize;
-            const y = drops[i] * fontSize;
-            // bright green numbers
-            ctx.fillStyle = '#00ff6a';
-            ctx.fillText(text, x, y);
+            ctx.fillStyle='#00ff6a';
+            ctx.fillText(text,i*fontSize,drops[i]*fontSize);
             drops[i]++;
-            if(drops[i]*fontSize > matrixCanvas.height && Math.random() > 0.975) drops[i] = 0;
+            if(drops[i]*fontSize>matrixCanvas.height && Math.random()>0.975) drops[i]=0;
           }
           requestAnimationFrame(draw);
         }
         draw();
-
-        // Stop after 3 seconds
         setTimeout(()=>{
-          running = false;
-          matrixCanvas.style.display = 'none';
-          message.style.display = 'none';
-        }, 3000);
+          running=false;
+          matrixCanvas.style.display='none';
+          message.style.display='none';
+        },3000);
       }
-
-      // Resize canvas on window resize
-      window.addEventListener('resize', () => {
-        matrixCanvas.width = window.innerWidth;
-        matrixCanvas.height = window.innerHeight;
-      });
-
     </script>
   </body>
 </html>
