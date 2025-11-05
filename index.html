@@ -1,87 +1,133 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
   <head>
     <meta charset="utf-8" />
-    <title>Moana AR Puzzle – Project SYN-01</title>
+    <title>Project SYN-01 | Moana AR Puzzle</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
     <style>
-      body { margin: 0; overflow: hidden; font-family: 'Poppins', sans-serif; background: black; }
+      body {
+        margin: 0;
+        overflow: hidden;
+        font-family: 'Poppins', sans-serif;
+        background: #000;
+        color: #fff;
+      }
 
-      #permissionOverlay {
+      #permissionScreen {
         position: fixed;
         inset: 0;
-        background: radial-gradient(circle, #001a00 0%, #000 100%);
-        color: #00ff99;
+        background: #000;
+        color: #00ff9d;
         display: flex;
-        align-items: center;
-        justify-content: center;
         flex-direction: column;
-        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+        z-index: 999;
+        font-size: 18px;
         text-align: center;
       }
-      #permissionOverlay button {
-        margin-top: 20px;
-        padding: 12px 24px;
-        font-size: 18px;
+
+      #startBtn {
+        margin-top: 15px;
+        background: #00ff9d;
         border: none;
-        border-radius: 10px;
-        background: #00ff99;
-        color: black;
-        font-weight: 700;
+        padding: 10px 18px;
+        color: #000;
+        font-weight: bold;
+        border-radius: 8px;
         cursor: pointer;
       }
 
       #hud {
-        position: absolute; top: 10px; left: 10px;
-        background: rgba(0,0,0,0.55); color: white;
-        padding: 10px 15px; border-radius: 10px; z-index: 20;
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: rgba(0, 0, 0, 0.55);
+        color: white;
+        padding: 10px 15px;
+        border-radius: 10px;
+        z-index: 20;
+        max-width: 90%;
       }
+
       #inputBox {
-        position: absolute; bottom: 8%; left: 50%;
+        position: absolute;
+        bottom: 8%;
+        left: 50%;
         transform: translateX(-50%);
-        background: rgba(255,255,255,0.92);
-        border-radius: 12px; padding: 12px 18px;
-        box-shadow: 0 0 10px rgba(0,0,0,0.3);
-        z-index: 25; display: none; text-align: center;
+        background: rgba(255, 255, 255, 0.92);
+        border-radius: 12px;
+        padding: 12px 18px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        z-index: 25;
+        display: none;
+        text-align: center;
+        color: #000;
       }
+
       #inputBox input {
-        padding: 8px; width: 160px;
-        border-radius: 6px; border: 1px solid #aaa;
-        font-size: 16px; text-align: center;
+        padding: 8px;
+        width: 160px;
+        border-radius: 6px;
+        border: 1px solid #aaa;
+        font-size: 16px;
+        text-align: center;
       }
+
       #inputBox button {
         margin-left: 10px;
-        background: #00b894; border: none; color: #fff;
-        padding: 8px 12px; border-radius: 6px; cursor: pointer;
+        background: #00b894;
+        border: none;
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 6px;
+        cursor: pointer;
       }
+
       #message {
         position: absolute;
-        left: 50%; top: 50%; transform: translate(-50%,-50%);
-        background: rgba(0,0,0,0.7); color: #fff;
-        padding: 20px 25px; border-radius: 12px;
-        display: none; z-index: 40; font-size: 20px;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.85);
+        color: #00ff9d;
+        padding: 20px 25px;
+        border-radius: 12px;
+        display: none;
+        z-index: 40;
+        font-size: 20px;
+        border: 1px solid #00ff9d;
       }
+
       #matrixCanvas {
-        position: absolute; left: 0; top: 0; width: 100%; height: 100%;
-        pointer-events: none; display: none; z-index: 35;
+        position: fixed;
+        inset: 0;
+        display: none;
+        background: black;
+        z-index: 9999;
       }
     </style>
   </head>
+
   <body>
-    <div id="permissionOverlay">
-      <h2>🔒 Camera Permission Needed</h2>
-      <p>Tap below to allow your camera and start the AR experience.</p>
-      <button id="grantBtn">Grant Camera Access</button>
+    <!-- Permission Screen -->
+    <div id="permissionScreen">
+      <h2>🔐 Camera Access Required</h2>
+      <p>Tap below and grant permission to start Project SYN-01 AR experience.</p>
+      <button id="startBtn">Allow Camera & Start</button>
     </div>
 
+    <!-- HUD -->
     <div id="hud">
-      <b>Project SYN-01</b><br>
+      <b>Project SYN-01 (☉_☉)</b><br />
       Scan the Moana marker to hear her clue and enter the secret code.
     </div>
 
+    <!-- Input Box -->
     <div id="inputBox">
-      <div><b>Question:</b> What code will it be?</div><br>
+      <div><b>Question:</b> What code that will be?</div>
+      <br />
       <input id="answerInput" placeholder="Enter code..." maxlength="5" />
       <button id="submitBtn">Submit</button>
     </div>
@@ -89,33 +135,30 @@
     <div id="message"></div>
     <canvas id="matrixCanvas"></canvas>
 
+    <!-- AR Scene -->
     <a-scene
       id="scene"
-      vr-mode-ui="enabled: false"
       embedded
-      renderer="logarithmicDepthBuffer: true; antialias: true;"
-      arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
-      style="display:none;"
+      vr-mode-ui="enabled: false"
+      arjs="sourceType: webcam; debugUIEnabled: false;"
+      style="display: none;"
     >
-      <a-assets crossorigin="anonymous">
-        <a-asset-item id="moanaAsset" src="moana3d.glb"></a-asset-item>
-        <audio id="clueAudio" src="clue.mp3"></audio>
-      </a-assets>
-
       <a-entity camera></a-entity>
 
-      <a-marker id="moanaMarker" type="pattern" url="Kanji_marker_ARjs.png">
+      <a-marker id="moanaMarker" preset="hiro">
         <a-gltf-model
           id="moanaModel"
-          src="#moanaAsset"
+          src="moana.glb"
           position="0 0 0"
-          scale="0.5 0.5 0.5"
+          scale="0.4 0.4 0.4"
           rotation="0 180 0"
           animation="property: rotation; to: 0 360 0; loop: true; dur: 12000; easing: linear;"
-          crossorigin="anonymous"
         ></a-gltf-model>
 
-        <a-entity id="moanaVoice" sound="src: #clueAudio; autoplay: false;"></a-entity>
+        <a-entity
+          id="moanaVoice"
+          sound="src: url(clue.mp3); autoplay: false;"
+        ></a-entity>
 
         <a-text
           value="I heard the ocean hum a code..."
@@ -128,87 +171,93 @@
     </a-scene>
 
     <script>
-      const overlay = document.getElementById('permissionOverlay');
-      const grantBtn = document.getElementById('grantBtn');
-      const scene = document.getElementById('scene');
-      const marker = document.getElementById('moanaMarker');
-      const voice = document.getElementById('moanaVoice');
-      const inputBox = document.getElementById('inputBox');
-      const answerInput = document.getElementById('answerInput');
-      const submitBtn = document.getElementById('submitBtn');
-      const message = document.getElementById('message');
-      const matrixCanvas = document.getElementById('matrixCanvas');
-      const correctCode = '3';
+      const permissionScreen = document.getElementById("permissionScreen");
+      const startBtn = document.getElementById("startBtn");
+      const scene = document.getElementById("scene");
+      const inputBox = document.getElementById("inputBox");
+      const answerInput = document.getElementById("answerInput");
+      const submitBtn = document.getElementById("submitBtn");
+      const message = document.getElementById("message");
+      const marker = document.getElementById("moanaMarker");
+      const voice = document.getElementById("moanaVoice");
+      const matrixCanvas = document.getElementById("matrixCanvas");
+      const correctCode = "3";
 
-      // Explicit camera permission
-      grantBtn.addEventListener('click', async () => {
+      // ✅ Ask for camera permission first
+      startBtn.addEventListener("click", async () => {
         try {
           await navigator.mediaDevices.getUserMedia({ video: true });
-          overlay.style.display = 'none';
-          scene.style.display = 'block';
+          permissionScreen.style.display = "none";
+          scene.style.display = "block";
         } catch (err) {
-          alert('Camera access denied. Enable camera in browser settings.');
-          console.error(err);
+          alert("Camera permission is required for AR to function.");
         }
       });
 
-      marker.addEventListener('markerFound', () => {
-        console.log('Marker detected!');
-        try { voice.components.sound.playSound(); } catch(e){ console.warn(e); }
-        inputBox.style.display = 'block';
+      // Show input and play voice when marker found
+      marker.addEventListener("markerFound", () => {
+        voice.components.sound.playSound();
+        inputBox.style.display = "block";
       });
 
-      marker.addEventListener('markerLost', () => {
-        inputBox.style.display = 'none';
+      marker.addEventListener("markerLost", () => {
+        inputBox.style.display = "none";
       });
 
-      submitBtn.addEventListener('click', () => {
+      // Check answer
+      submitBtn.addEventListener("click", () => {
         const ans = answerInput.value.trim();
-        if(!ans) return;
-        if(ans === correctCode) hackerCelebrate();
-        else {
-          message.textContent = '❌ Wrong Code! Try again.';
-          message.style.background = 'rgba(255,0,0,0.8)';
-          message.style.display = 'block';
-          setTimeout(()=> message.style.display='none', 1500);
+        if (!ans) return;
+
+        if (ans === correctCode) {
+          celebrateMatrix();
+        } else {
+          message.textContent = "❌ Wrong Code! Try again.";
+          message.style.color = "#ff5555";
+          message.style.display = "block";
+          setTimeout(() => (message.style.display = "none"), 1500);
         }
       });
 
-      function hackerCelebrate(){
-        message.textContent = '✅ Access Granted! Decrypting...';
-        message.style.background = 'rgba(0,200,100,0.85)';
-        message.style.display = 'block';
-        inputBox.style.display = 'none';
-        matrixCanvas.style.display = 'block';
+      // 🎉 Matrix Rain Celebration
+      function celebrateMatrix() {
+        message.textContent = "✅ Access Granted. System Rebooting...";
+        message.style.display = "block";
+        message.style.color = "#00ff9d";
+        inputBox.style.display = "none";
+
+        matrixCanvas.style.display = "block";
+        const ctx = matrixCanvas.getContext("2d");
         matrixCanvas.width = window.innerWidth;
         matrixCanvas.height = window.innerHeight;
-        const ctx = matrixCanvas.getContext('2d');
-        const chars = '01';
+
+        const letters = "01🧬💾☉_☉⚡";
         const fontSize = 16;
-        const columns = Math.floor(matrixCanvas.width / fontSize);
-        const drops = [];
-        for(let x=0;x<columns;x++) drops[x]=Math.random()*matrixCanvas.height/2;
-        ctx.font = fontSize+'px monospace';
-        let running = true;
-        function draw(){
-          if(!running) return;
-          ctx.fillStyle='rgba(0,0,0,0.05)';
-          ctx.fillRect(0,0,matrixCanvas.width,matrixCanvas.height);
-          for(let i=0;i<drops.length;i++){
-            const text = chars.charAt(Math.floor(Math.random()*chars.length));
-            ctx.fillStyle='#00ff6a';
-            ctx.fillText(text,i*fontSize,drops[i]*fontSize);
+        const columns = matrixCanvas.width / fontSize;
+        const drops = Array(Math.floor(columns)).fill(1);
+
+        function draw() {
+          ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+          ctx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+          ctx.fillStyle = "#00ff66";
+          ctx.font = fontSize + "px monospace";
+
+          for (let i = 0; i < drops.length; i++) {
+            const text = letters.charAt(Math.floor(Math.random() * letters.length));
+            ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+            if (drops[i] * fontSize > matrixCanvas.height && Math.random() > 0.975)
+              drops[i] = 0;
             drops[i]++;
-            if(drops[i]*fontSize>matrixCanvas.height && Math.random()>0.975) drops[i]=0;
           }
-          requestAnimationFrame(draw);
         }
-        draw();
-        setTimeout(()=>{
-          running=false;
-          matrixCanvas.style.display='none';
-          message.style.display='none';
-        },3000);
+
+        let interval = setInterval(draw, 50);
+
+        setTimeout(() => {
+          clearInterval(interval);
+          matrixCanvas.style.display = "none";
+          message.style.display = "none";
+        }, 5000);
       }
     </script>
   </body>
