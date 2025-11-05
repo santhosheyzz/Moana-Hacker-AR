@@ -2,232 +2,172 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Shadow Hunt AR — Hidden Digits</title>
+    <title>Moana AR Puzzle – Project SYN-01</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
     <style>
-      body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
+      body { margin: 0; overflow: hidden; font-family: 'Poppins', sans-serif; }
+
       #hud {
-        position: absolute; left: 12px; top: 12px; z-index: 20;
-        background: rgba(0,0,0,0.45); color: #fff; padding: 10px; border-radius: 8px;
-        max-width: calc(100% - 40px); font-size: 14px;
+        position: absolute; top: 10px; left: 10px;
+        background: rgba(0,0,0,0.55); color: white;
+        padding: 10px 15px; border-radius: 10px;
+        z-index: 20; max-width: 90%;
       }
-      #inputPanel {
-        display: none;
-        position: absolute; left: 50%; top: 80%; transform: translateX(-50%);
-        z-index: 21; background: rgba(255,255,255,0.95); color: #000;
-        padding: 8px 10px; border-radius: 10px; min-width: 260px;
+
+      #inputBox {
+        position: absolute; bottom: 8%; left: 50%;
+        transform: translateX(-50%);
+        background: rgba(255,255,255,0.92);
+        border-radius: 12px; padding: 12px 18px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        z-index: 25; display: none; text-align: center;
       }
-      #inputPanel input { width: calc(100% - 20px); padding: 6px; margin-bottom:6px; }
-      #hintSmall { font-size:12px; color:#ddd; margin-top:6px; }
-      #toast {
-        position: absolute; left: 50%; top: 10%; transform: translateX(-50%); z-index: 22;
-        background: rgba(40,40,40,0.9); color: #fff; padding: 8px 12px; border-radius: 8px; display:none;
+
+      #inputBox input {
+        padding: 8px; width: 160px;
+        border-radius: 6px; border: 1px solid #aaa;
+        font-size: 16px; text-align: center;
+      }
+
+      #inputBox button {
+        margin-left: 10px;
+        background: #00b894; border: none; color: #fff;
+        padding: 8px 12px; border-radius: 6px; cursor: pointer;
+      }
+
+      #message {
+        position: absolute;
+        left: 50%; top: 50%; transform: translate(-50%,-50%);
+        background: rgba(0,0,0,0.7); color: #fff;
+        padding: 20px 25px; border-radius: 12px;
+        display: none; z-index: 40; font-size: 20px;
+      }
+
+      #confetti {
+        position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+        pointer-events: none; display: none;
       }
     </style>
   </head>
   <body>
     <div id="hud">
-      <div><b>Objective:</b> Find hidden digits inside AR. HINT: solve the riddle or align the object.</div>
-      <div id="status">Status: Waiting for markers...</div>
+      <b>Project SYN-01</b><br>
+      Scan the Moana marker to hear her clue and enter the secret code.
     </div>
 
-    <div id="inputPanel">
-      <div id="riddleText">Riddle goes here</div>
-      <input id="riddleAnswer" placeholder="Type answer here" />
-      <div style="display:flex; gap:8px; justify-content:flex-end;">
-        <button id="submitBtn">Submit</button>
-        <button id="cancelBtn">Cancel</button>
-      </div>
-      <div id="hintSmall">Tip: Press submit after typing.</div>
+    <div id="inputBox">
+      <div><b>Question:</b> What code that will be?</div><br>
+      <input id="answerInput" placeholder="Enter code..." maxlength="5" />
+      <button id="submitBtn">Submit</button>
     </div>
 
-    <div id="toast"></div>
+    <div id="message"></div>
+    <canvas id="confetti"></canvas>
 
     <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
       <a-entity camera></a-entity>
 
-      <!-- HIRO - hidden digit '1' behind riddle unlock -->
-      <a-marker id="marker-hiro" preset="hiro">
-        <!-- a locked crate model (simple box) -->
-        <a-box id="crate" position="0 0.45 0" depth="0.6" height="0.4" width="0.6" material="color:#7f8c8d"></a-box>
+      <a-marker id="moanaMarker" preset="hiro">
+        <!-- Moana 3D Model -->
+        <a-gltf-model id="moanaModel" src="moana.glb"
+                      position="0 0 0"
+                      scale="0.4 0.4 0.4"
+                      rotation="0 180 0"
+                      animation="property: rotation; to: 0 360 0; loop: true; dur: 12000; easing: linear;">
+        </a-gltf-model>
 
-        <!-- hidden digit 1 (starts invisible) -->
-        <a-text id="digit1" value="1"
-                position="0 1.1 0" align="center" scale="2 2 2" color="#ffd166" visible="false"></a-text>
+        <!-- Audio Clue -->
+        <a-entity id="moanaVoice" sound="src: url(clue.mp3); autoplay: false;"></a-entity>
 
-        <!-- small clue tag -->
-        <a-text value="AR Clue: I start the count—but I'm singular. Solve me." position="0 -0.3 0" align="center" scale="0.45 0.45 0.45" color="#ecf0f1"></a-text>
+        <!-- Floating Text -->
+        <a-text value="I heard the ocean hum a code..."
+                position="0 1.6 0"
+                align="center"
+                color="#00ffff"
+                scale="1.5 1.5 1.5"></a-text>
       </a-marker>
-
-      <!-- KANJI - hidden digit '3' via alignment (rotate device / tap twice) -->
-      <a-marker id="marker-kanji" preset="kanji">
-        <!-- shimmering shell -->
-        <a-sphere id="shell" position="0 0.5 0" radius="0.35" segments-width="32" color="#2980b9" material="metalness:0.3; roughness:0.2"></a-sphere>
-
-        <!-- hidden digit 3 -->
-        <a-text id="digit3" value="3"
-                position="0 1.1 0" align="center" scale="2 2 2" color="#7bed9f" visible="false"></a-text>
-
-        <a-text value="AR Trick: Align the shell's top toward the light (rotate your phone) or double-tap it."
-                position="0 -0.35 0" align="center" scale="0.4 0.4 0.4" color="#dff9fb"></a-text>
-      </a-marker>
-
-      <!-- FINAL - shows 13 when both found -->
-      <a-marker id="marker-final" type="pattern" url="custom-marker.patt">
-        <a-entity id="final13" visible="false" position="0 0.9 0">
-          <a-text id="big13" value="13" align="center" scale="4 4 4" color="#ff6b6b"></a-text>
-        </a-entity>
-        <a-text value="Place both digits here to reveal the final." position="0 -0.5 0" align="center" scale="0.35 0.35 0.35"></a-text>
-      </a-marker>
-
     </a-scene>
 
     <script>
-      // state
-      const state = { found1: false, found3: false };
-
-      // elements
-      const status = document.querySelector('#status');
-      const inputPanel = document.querySelector('#inputPanel');
-      const riddleText = document.querySelector('#riddleText');
-      const riddleAnswer = document.querySelector('#riddleAnswer');
+      const marker = document.querySelector('#moanaMarker');
+      const voice = document.querySelector('#moanaVoice');
+      const inputBox = document.querySelector('#inputBox');
+      const answerInput = document.querySelector('#answerInput');
       const submitBtn = document.querySelector('#submitBtn');
-      const cancelBtn = document.querySelector('#cancelBtn');
-      const toast = document.querySelector('#toast');
+      const message = document.querySelector('#message');
+      const confettiCanvas = document.querySelector('#confetti');
+      const correctCode = '3';
 
-      const digit1 = document.querySelector('#digit1');
-      const digit3 = document.querySelector('#digit3');
-      const final13 = document.querySelector('#final13');
-
-      // helper: show toast
-      function showToast(txt, ms=1800) {
-        toast.textContent = txt;
-        toast.style.display = 'block';
-        setTimeout(()=> toast.style.display='none', ms);
-      }
-
-      // -------------------------------
-      // RIDDLE for Hiro (digit 1)
-      // You can change this riddle to any text and expectedAnswer.
-      const hiroRiddle = {
-        text: "Riddle: I am the first, alone and true. What number am I?",
-        expectedAnswer: "1"
-      };
-
-      // marker events
-      const markerHiro = document.querySelector('#marker-hiro');
-      const markerKanji = document.querySelector('#marker-kanji');
-      const markerFinal = document.querySelector('#marker-final');
-
-      markerHiro.addEventListener('markerFound', () => {
-        status.innerHTML = 'Hiro marker found. Solve the riddle to unlock the digit.';
-        // open the input panel with riddle
-        riddleText.textContent = hiroRiddle.text;
-        riddleAnswer.value = '';
-        inputPanel.style.display = 'block';
-      });
-      markerHiro.addEventListener('markerLost', () => {
-        status.innerHTML = 'Hiro marker lost. Scan again.';
-        inputPanel.style.display = 'none';
+      // play Moana's voice + show question when marker found
+      marker.addEventListener('markerFound', () => {
+        voice.components.sound.playSound();
+        inputBox.style.display = 'block';
       });
 
+      marker.addEventListener('markerLost', () => {
+        inputBox.style.display = 'none';
+      });
+
+      // check answer
       submitBtn.addEventListener('click', () => {
-        const ans = riddleAnswer.value.trim();
-        if(!ans){ showToast('Type an answer.'); return; }
-        if(ans === hiroRiddle.expectedAnswer){
-          // reveal digit1
-          digit1.setAttribute('visible','true');
-          // animate scale and float
-          digit1.setAttribute('animation__scale', { property:'scale', to:'2.8 2.8 2.8', dur:350, easing:'easeOutElastic' });
-          digit1.setAttribute('animation__pos', { property:'position', to:'0 1.3 0', dur:900, dir:'alternate', loop:true });
-          state.found1 = true;
-          inputPanel.style.display='none';
-          status.innerHTML = 'Digit 1 unlocked! Now find the other marker.';
-          showToast('Correct — digit 1 acquired.');
-          tryUnlockFinal();
+        const ans = answerInput.value.trim();
+        if(!ans) return;
+
+        if(ans === correctCode){
+          celebrate();
         } else {
-          showToast('Incorrect. Try again or look for more hints.');
+          message.textContent = '❌ Wrong Code! Try again.';
+          message.style.background = 'rgba(255,0,0,0.8)';
+          message.style.display = 'block';
+          setTimeout(()=> message.style.display='none', 1500);
         }
       });
 
-      cancelBtn.addEventListener('click', () => {
-        inputPanel.style.display = 'none';
-      });
+      // celebration (AR fireworks)
+      function celebrate(){
+        message.textContent = '✅ Access Granted! The system is free.';
+        message.style.background = 'rgba(0,200,100,0.85)';
+        message.style.display = 'block';
+        inputBox.style.display = 'none';
 
-      // -------------------------------
-      // Kanji marker: alignment / double-tap trick
-      // We'll implement: double-click on the sphere reveals 3, OR if device rotation near vertical threshold (simulate alignment), reveal.
-      const shell = document.querySelector('#shell');
-      let lastTap = 0;
-      shell.addEventListener('click', () => {
-        const now = Date.now();
-        if (now - lastTap < 400) {
-          // double-tap detected
-          revealDigit3('doubletap');
-        } else {
-          showToast('Double-tap the shell to unlock, or rotate your device.');
+        // simple confetti
+        confettiCanvas.style.display = 'block';
+        const ctx = confettiCanvas.getContext('2d');
+        confettiCanvas.width = window.innerWidth;
+        confettiCanvas.height = window.innerHeight;
+
+        const confetti = [];
+        for(let i=0;i<120;i++){
+          confetti.push({
+            x: Math.random()*window.innerWidth,
+            y: Math.random()*window.innerHeight - window.innerHeight,
+            r: Math.random()*6+2,
+            c: `hsl(${Math.random()*360},100%,50%)`,
+            s: Math.random()*4+2
+          });
         }
-        lastTap = now;
-      });
 
-      // detect orientation trick: if device tilts near "face-up" while kanji marker visible (simulate alignment)
-      let kanjiVisible = false;
-      markerKanji.addEventListener('markerFound', () => {
-        kanjiVisible = true;
-        status.innerHTML = 'Kanji detected. Double-tap the shell or tilt device to reveal.';
-      });
-      markerKanji.addEventListener('markerLost', () => {
-        kanjiVisible = false;
-        status.innerHTML = 'Scan other markers...';
-      });
-
-      // Listen to device orientation (may work on mobile browsers)
-      window.addEventListener('deviceorientation', (e) => {
-        if (!kanjiVisible || state.found3) return;
-        // gamma (left/right), beta (front/back tilt)
-        const beta = e.beta || 0; // -180 to 180 (front-back)
-        // We'll assume "tilt forward" around ~40 degrees indicates alignment
-        if (beta > 30 && beta < 80) {
-          // small debounce
-          if(!state._tiltTimeout){
-            state._tiltTimeout = true;
-            setTimeout(()=> { revealDigit3('tilt'); state._tiltTimeout=false; }, 700);
-          }
+        function draw(){
+          ctx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height);
+          confetti.forEach(p=>{
+            p.y += p.s;
+            if(p.y > confettiCanvas.height) p.y = -10;
+            ctx.beginPath();
+            ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+            ctx.fillStyle=p.c;
+            ctx.fill();
+          });
+          requestAnimationFrame(draw);
         }
-      });
+        draw();
 
-      function revealDigit3(method){
-        if(state.found3) return;
-        state.found3 = true;
-        digit3.setAttribute('visible','true');
-        digit3.setAttribute('animation__scale', { property:'scale', to:'2.8 2.8 2.8', dur:350, easing:'easeOutElastic' });
-        digit3.setAttribute('animation__pos', { property:'position', to:'0 1.3 0', dur:900, dir:'alternate', loop:true });
-        showToast('Digit 3 revealed by '+method);
-        status.innerHTML = 'Digit 3 unlocked! Collect both digits to reveal final.';
-        tryUnlockFinal();
+        // stop after 3 seconds
+        setTimeout(()=>{
+          message.style.display='none';
+          confettiCanvas.style.display='none';
+        }, 3000);
       }
-
-      // -------------------------------
-      // Final unlock: when both found, reveal 13 at final marker OR show floating 13
-      function tryUnlockFinal(){
-        if(state.found1 && state.found3){
-          // reveal final when final marker scanned, but also show floating fallback
-          final13.setAttribute('visible','true');
-          // pulsing animation
-          document.querySelector('#big13').setAttribute('animation__pulse', { property:'scale', to:'4.6 4.6 4.6', dur:600, dir:'alternate', loop:true });
-          status.innerHTML = 'All digits found! Final 13 revealed at the final marker.';
-          showToast('All set — final unlocked! Show to judge: FLAG{13_FOUND}');
-        }
-      }
-
-      // Accessibility fallback: allow unlocking final by pressing both keys on keyboard for test
-      window.addEventListener('keydown', (ev) => {
-        if(ev.key === '1'){ digit1.setAttribute('visible','true'); state.found1=true; tryUnlockFinal(); }
-        if(ev.key === '3'){ digit3.setAttribute('visible','true'); state.found3=true; tryUnlockFinal(); }
-      });
-
     </script>
-
   </body>
 </html>
