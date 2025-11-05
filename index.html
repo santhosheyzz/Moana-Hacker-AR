@@ -7,14 +7,12 @@
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
     <style>
       body { margin: 0; overflow: hidden; font-family: 'Poppins', sans-serif; }
-
       #hud {
         position: absolute; top: 10px; left: 10px;
         background: rgba(0,0,0,0.55); color: white;
         padding: 10px 15px; border-radius: 10px;
         z-index: 20; max-width: 90%;
       }
-
       #inputBox {
         position: absolute; bottom: 8%; left: 50%;
         transform: translateX(-50%);
@@ -23,19 +21,16 @@
         box-shadow: 0 0 10px rgba(0,0,0,0.3);
         z-index: 25; display: none; text-align: center;
       }
-
       #inputBox input {
         padding: 8px; width: 160px;
         border-radius: 6px; border: 1px solid #aaa;
         font-size: 16px; text-align: center;
       }
-
       #inputBox button {
         margin-left: 10px;
         background: #00b894; border: none; color: #fff;
         padding: 8px 12px; border-radius: 6px; cursor: pointer;
       }
-
       #message {
         position: absolute;
         left: 50%; top: 50%; transform: translate(-50%,-50%);
@@ -43,10 +38,9 @@
         padding: 20px 25px; border-radius: 12px;
         display: none; z-index: 40; font-size: 20px;
       }
-
-      #confetti {
+      #matrixCanvas {
         position: absolute; left: 0; top: 0; width: 100%; height: 100%;
-        pointer-events: none; display: none;
+        pointer-events: none; display: none; z-index: 35;
       }
     </style>
   </head>
@@ -57,28 +51,37 @@
     </div>
 
     <div id="inputBox">
-      <div><b>Question:</b> What code that will be?</div><br>
+      <div><b>Question:</b> What code will be?</div><br>
       <input id="answerInput" placeholder="Enter code..." maxlength="5" />
       <button id="submitBtn">Submit</button>
     </div>
 
     <div id="message"></div>
-    <canvas id="confetti"></canvas>
+    <canvas id="matrixCanvas"></canvas>
 
+    <!-- A-Frame scene -->
     <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
+      <a-assets crossorigin="anonymous">
+        <!-- Make sure the filename exactly matches the uploaded one on Netlify / repo -->
+        <a-asset-item id="moanaAsset" src="moana3d.glb"></a-asset-item>
+        <audio id="clueAudio" src="clue.mp3"></audio>
+      </a-assets>
+
       <a-entity camera></a-entity>
 
-      <a-marker id="moanaMarker" preset="hiro">
-        <!-- Moana 3D Model -->
-        <a-gltf-model id="moanaModel" src="Moana2.glb"
+      <a-marker id="moanaMarker" type="pattern" url="Kanji_marker_ARjs.png">
+        <!-- Use the preloaded asset via src="#moanaAsset" -->
+        <a-gltf-model id="moanaModel"
+                      src="#moanaAsset"
                       position="0 0 0"
-                      scale="0.4 0.4 0.4"
+                      scale="0.35 0.35 0.35"
                       rotation="0 180 0"
-                      animation="property: rotation; to: 0 360 0; loop: true; dur: 12000; easing: linear;">
+                      animation="property: rotation; to: 0 360 0; loop: true; dur: 12000; easing: linear;"
+                      crossorigin="anonymous">
         </a-gltf-model>
 
-        <!-- Audio Clue -->
-        <a-entity id="moanaVoice" sound="src: url(clue.mp3); autoplay: false;"></a-entity>
+        <!-- Audio Clue attached as sound component -->
+        <a-entity id="moanaVoice" sound="src: #clueAudio; autoplay: false;"></a-entity>
 
         <!-- Floating Text -->
         <a-text value="I heard the ocean hum a code..."
@@ -90,32 +93,53 @@
     </a-scene>
 
     <script>
+      // Element refs
       const marker = document.querySelector('#moanaMarker');
-      const voice = document.querySelector('#moanaVoice');
+      const voiceEntity = document.querySelector('#moanaVoice');
       const inputBox = document.querySelector('#inputBox');
       const answerInput = document.querySelector('#answerInput');
       const submitBtn = document.querySelector('#submitBtn');
       const message = document.querySelector('#message');
-      const confettiCanvas = document.querySelector('#confetti');
+      const matrixCanvas = document.querySelector('#matrixCanvas');
+      const moanaModel = document.querySelector('#moanaModel');
       const correctCode = '3';
 
-      // play Moana's voice + show question when marker found
+      // Debugging logs
+      console.log('Script loaded: AR page initialised.');
+
+      // Marker events
       marker.addEventListener('markerFound', () => {
-        voice.components.sound.playSound();
+        console.log('markerFound event');
+        try { voiceEntity.components.sound.playSound(); } catch (e) { console.warn('Could not play sound', e); }
         inputBox.style.display = 'block';
+        // try to ensure model visible
+        moanaModel.setAttribute('visible', 'true');
       });
 
       marker.addEventListener('markerLost', () => {
+        console.log('markerLost event');
         inputBox.style.display = 'none';
       });
 
-      // check answer
+      // Model load error / success handlers
+      moanaModel.addEventListener('model-loaded', () => {
+        console.log('GLB model loaded successfully.');
+        // If model appears tiny or far, adjust scale or position here.
+      });
+      moanaModel.addEventListener('model-error', (ev) => {
+        console.error('Model failed to load:', ev);
+        message.textContent = 'Model load failed — check console (404 / CORS).';
+        message.style.background = 'rgba(255,70,70,0.9)';
+        message.style.display = 'block';
+        setTimeout(()=> message.style.display='none', 3000);
+      });
+
+      // Submit handler
       submitBtn.addEventListener('click', () => {
         const ans = answerInput.value.trim();
         if(!ans) return;
-
-        if(ans === correctCode){
-          celebrate();
+        if(ans === correctCode) {
+          hackerCelebrate();
         } else {
           message.textContent = '❌ Wrong Code! Try again.';
           message.style.background = 'rgba(255,0,0,0.8)';
@@ -124,50 +148,61 @@
         }
       });
 
-      // celebration (AR fireworks)
-      function celebrate(){
-        message.textContent = '✅ Access Granted! The system is free.';
+      // Hacker / numbers rain celebration (Matrix-like)
+      function hackerCelebrate(){
+        message.textContent = '✅ Access Granted! Decrypting...';
         message.style.background = 'rgba(0,200,100,0.85)';
         message.style.display = 'block';
         inputBox.style.display = 'none';
 
-        // simple confetti
-        confettiCanvas.style.display = 'block';
-        const ctx = confettiCanvas.getContext('2d');
-        confettiCanvas.width = window.innerWidth;
-        confettiCanvas.height = window.innerHeight;
+        matrixCanvas.style.display = 'block';
+        matrixCanvas.width = window.innerWidth;
+        matrixCanvas.height = window.innerHeight;
+        const ctx = matrixCanvas.getContext('2d');
 
-        const confetti = [];
-        for(let i=0;i<120;i++){
-          confetti.push({
-            x: Math.random()*window.innerWidth,
-            y: Math.random()*window.innerHeight - window.innerHeight,
-            r: Math.random()*6+2,
-            c: `hsl(${Math.random()*360},100%,50%)`,
-            s: Math.random()*4+2
-          });
-        }
+        // Characters: digits + hex chars for hacker vibe
+        const chars = '0123456789ABCDEF';
+        const fontSize = 16;
+        const columns = Math.floor(matrixCanvas.width / fontSize);
+        const drops = [];
+        for(let x=0;x<columns;x++) drops[x] = Math.random()*matrixCanvas.height/2;
 
-        function draw(){
-          ctx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height);
-          confetti.forEach(p=>{
-            p.y += p.s;
-            if(p.y > confettiCanvas.height) p.y = -10;
-            ctx.beginPath();
-            ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-            ctx.fillStyle=p.c;
-            ctx.fill();
-          });
+        ctx.font = fontSize + 'px monospace';
+
+        let running = true;
+        function draw() {
+          if(!running) return;
+          ctx.fillStyle = 'rgba(0,0,0,0.05)';
+          ctx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+
+          for(let i=0;i<drops.length;i++){
+            const text = chars.charAt(Math.floor(Math.random()*chars.length));
+            const x = i * fontSize;
+            const y = drops[i] * fontSize;
+            // bright green numbers
+            ctx.fillStyle = '#00ff6a';
+            ctx.fillText(text, x, y);
+            drops[i]++;
+            if(drops[i]*fontSize > matrixCanvas.height && Math.random() > 0.975) drops[i] = 0;
+          }
           requestAnimationFrame(draw);
         }
         draw();
 
-        // stop after 3 seconds
+        // Stop after 3 seconds
         setTimeout(()=>{
-          message.style.display='none';
-          confettiCanvas.style.display='none';
+          running = false;
+          matrixCanvas.style.display = 'none';
+          message.style.display = 'none';
         }, 3000);
       }
+
+      // Resize canvas on window resize
+      window.addEventListener('resize', () => {
+        matrixCanvas.width = window.innerWidth;
+        matrixCanvas.height = window.innerHeight;
+      });
+
     </script>
   </body>
 </html>
